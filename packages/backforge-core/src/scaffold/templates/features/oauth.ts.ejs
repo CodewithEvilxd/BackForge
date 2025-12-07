@@ -1,0 +1,36 @@
+<% if (features.includes('oauth')) { %>
+// OAuth2.0 Configuration (Google & GitHub)
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GitHubStrategy } from 'passport-github2';
+
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID!,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  callbackURL: `${process.env.BASE_URL}/api/v1/auth/google/callback`
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Find or create user logic here
+    const user = { id: profile.id, email: profile.emails?.[0].value, name: profile.displayName };
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
+
+passport.use(new GitHubStrategy({
+  clientID: process.env.GITHUB_CLIENT_ID!,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+  callbackURL: `${process.env.BASE_URL}/api/v1/auth/github/callback`
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Find or create user logic here
+    const user = { id: profile.id, email: profile.emails?.[0].value, name: profile.displayName };
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
+
+export default passport;
+<% } %>

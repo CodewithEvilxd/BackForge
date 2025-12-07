@@ -1,6 +1,6 @@
 {
   "name": "backforge-core",
-  "version": "1.0.12",
+  "version": "1.7.0",
   "description": "Production-ready backend scaffolder for Node.js and Bun - Core library",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

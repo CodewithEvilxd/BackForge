@@ -1,47 +1,28 @@
 import { Request, Response } from 'express';
-import { prisma } from '../config/prisma';
+import mongoose from 'mongoose';
 import os from 'os';
 
 export const getHealthStatus = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
-    
-    const healthCheck = {
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      database: {
-        connected: true,
-        status: 'healthy',
-      },
-      memory: {
-        usage: process.memoryUsage(),
-        free: os.freemem(),
-        total: os.totalmem(),
-      },
-    };
+  const healthCheck = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    database: {
+      connected: mongoose.connection.readyState === 1,
+      state: mongoose.connection.readyState,
+    },
+    memory: {
+      usage: process.memoryUsage(),
+      free: os.freemem(),
+      total: os.totalmem(),
+    },
+  };
 
-    res.status(200).json({
-      success: true,
-      data: healthCheck,
-    });
-  } catch (error) {
-    const healthCheck = {
-      status: 'ERROR',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      database: {
-        connected: false,
-        status: 'unhealthy',
-      },
-    };
+  const httpCode = healthCheck.database.connected ? 200 : 503;
 
-    res.status(503).json({
-      success: false,
-      data: healthCheck,
-    });
-  }
+  res.status(httpCode).json({
+    success: healthCheck.database.connected,
+    data: healthCheck,
+  });
 };

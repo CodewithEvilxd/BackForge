@@ -1,0 +1,52 @@
+import { Request, Response, NextFunction } from 'express';
+import catchAsync from '../utils/catchAsync';
+import { User } from '../models/User.model';
+import { verifyToken } from '../utils/jwt';
+import { ApiError } from '../utils/apiError';
+
+// Extend Express Request interface
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
+export const authenticate = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new ApiError(401, 'Authentication required');
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+
+  try {
+    const decoded = verifyToken(token);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      throw new ApiError(401, 'Invalid token');
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    throw new ApiError(401, 'Invalid token');
+  }
+});
+
+export const authorize = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new ApiError(401, 'Authentication required');
+    }
+
+    if (!roles.includes(req.user.role)) {
+      throw new ApiError(403, 'Insufficient permissions');
+    }
+
+    next();
+  };
+};

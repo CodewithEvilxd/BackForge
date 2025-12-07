@@ -1,6 +1,6 @@
 {
   "name": "backforge-cli",
-  "version": "1.0.9",
+  "version": "1.7.0",
   "description": "BackForge CLI - Production-ready backend scaffolder (Global CLI wrapper)",
   "bin": {
     "backforge": "bin/backforge.js"
@@ -25,7 +25,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "backforge-core": "^1.0.12"
+    "backforge-core": "^1.7.0"
   },
   "scripts": {
     "build": "echo skip"

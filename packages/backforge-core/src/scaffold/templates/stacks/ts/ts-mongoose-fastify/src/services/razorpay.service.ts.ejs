@@ -1,0 +1,152 @@
+<% if (features.includes('payment-razorpay')) { %>
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import logger from '../config/logger';
+
+class RazorpayService {
+  private razorpay: Razorpay;
+
+  constructor() {
+    this.razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID!,
+      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    });
+  }
+
+  async createOrder(amount: number, currency: string = 'INR', receipt?: string, notes?: Record<string, string>) {
+    try {
+      const options = {
+        amount: Math.round(amount * 100), // Amount in paisa (smallest currency unit)
+        currency,
+        receipt: receipt || `receipt_${Date.now()}`,
+        notes,
+      };
+
+      const order = await this.razorpay.orders.create(options);
+      logger.info(`Razorpay order created: ${order.id}`);
+      return order;
+    } catch (error) {
+      logger.error('Failed to create Razorpay order:', error);
+      throw new Error('Order creation failed');
+    }
+  }
+
+  async verifyPayment(orderId: string, paymentId: string, signature: string): Promise<boolean> {
+    try {
+      const sign = orderId + '|' + paymentId;
+      const expectedSign = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+        .update(sign.toString())
+        .digest('hex');
+
+      if (signature === expectedSign) {
+        logger.info(`Payment verified: ${paymentId}`);
+        return true;
+      } else {
+        logger.warn(`Payment verification failed: ${paymentId}`);
+        return false;
+      }
+    } catch (error) {
+      logger.error('Payment verification error:', error);
+      return false;
+    }
+  }
+
+  async createCustomer(name: string, email: string, contact?: string, notes?: Record<string, string>) {
+    try {
+      const customer = await this.razorpay.customers.create({
+        name,
+        email,
+        contact,
+        notes,
+      });
+
+      logger.info(`Razorpay customer created: ${customer.id}`);
+      return customer;
+    } catch (error) {
+      logger.error('Failed to create Razorpay customer:', error);
+      throw new Error('Customer creation failed');
+    }
+  }
+
+  async createSubscription(planId: string, customerId: string, notes?: Record<string, string>) {
+    try {
+      const subscription = await this.razorpay.subscriptions.create({
+        plan_id: planId,
+        customer_id: customerId,
+        notes,
+      });
+
+      logger.info(`Razorpay subscription created: ${subscription.id}`);
+      return subscription;
+    } catch (error) {
+      logger.error('Failed to create Razorpay subscription:', error);
+      throw new Error('Subscription creation failed');
+    }
+  }
+
+  async cancelSubscription(subscriptionId: string) {
+    try {
+      const subscription = await this.razorpay.subscriptions.cancel(subscriptionId);
+      logger.info(`Razorpay subscription cancelled: ${subscriptionId}`);
+      return subscription;
+    } catch (error) {
+      logger.error('Failed to cancel Razorpay subscription:', error);
+      throw new Error('Subscription cancellation failed');
+    }
+  }
+
+  async refundPayment(paymentId: string, amount?: number, notes?: Record<string, string>) {
+    try {
+      const refund = await this.razorpay.payments.refund(paymentId, {
+        amount: amount ? Math.round(amount * 100) : undefined,
+        notes,
+      });
+
+      logger.info(`Razorpay refund created: ${refund.id}`);
+      return refund;
+    } catch (error) {
+      logger.error('Failed to create Razorpay refund:', error);
+      throw new Error('Refund creation failed');
+    }
+  }
+
+  async getPayment(paymentId: string) {
+    try {
+      const payment = await this.razorpay.payments.fetch(paymentId);
+      return payment;
+    } catch (error) {
+      logger.error('Failed to fetch Razorpay payment:', error);
+      throw new Error('Payment fetch failed');
+    }
+  }
+
+  async getOrder(orderId: string) {
+    try {
+      const order = await this.razorpay.orders.fetch(orderId);
+      return order;
+    } catch (error) {
+      logger.error('Failed to fetch Razorpay order:', error);
+      throw new Error('Order fetch failed');
+    }
+  }
+
+  // Webhook signature verification
+  verifyWebhookSignature(body: string, signature: string): boolean {
+    try {
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
+        .update(body)
+        .digest('hex');
+
+      return signature === expectedSignature;
+    } catch (error) {
+      logger.error('Webhook signature verification error:', error);
+      return false;
+    }
+  }
+}
+
+export const razorpayService = new RazorpayService();
+export default razorpayService;
+<% } %>

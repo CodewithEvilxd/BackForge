@@ -1,0 +1,143 @@
+<% if (features.includes('microservices')) { %>
+import axios, { AxiosInstance } from 'axios';
+import logger from './logger';
+
+interface ServiceConfig {
+  name: string;
+  url: string;
+  timeout?: number;
+  retries?: number;
+}
+
+class ServiceRegistry {
+  private services: Map<string, ServiceConfig> = new Map();
+  private httpClients: Map<string, AxiosInstance> = new Map();
+
+  registerService(config: ServiceConfig): void {
+    this.services.set(config.name, config);
+
+    // Create HTTP client for the service
+    const client = axios.create({
+      baseURL: config.url,
+      timeout: config.timeout || 5000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Add request interceptor for logging
+    client.interceptors.request.use(
+      (config) => {
+        logger.info(`[${config.serviceName}] ${config.method?.toUpperCase()} ${config.url}`);
+        return config;
+      },
+      (error) => {
+        logger.error(`[${config.serviceName}] Request error:`, error);
+        return Promise.reject(error);
+      }
+    );
+
+    // Add response interceptor for logging
+    client.interceptors.response.use(
+      (response) => {
+        logger.info(`[${config.serviceName}] Response: ${response.status}`);
+        return response;
+      },
+      (error) => {
+        logger.error(`[${config.serviceName}] Response error:`, error);
+        return Promise.reject(error);
+      }
+    );
+
+    this.httpClients.set(config.name, client);
+    logger.info(`Service registered: ${config.name} at ${config.url}`);
+  }
+
+  getService(name: string): AxiosInstance | null {
+    return this.httpClients.get(name) || null;
+  }
+
+  async callService(serviceName: string, method: 'get' | 'post' | 'put' | 'delete', endpoint: string, data?: any, retries: number = 3): Promise<any> {
+    const client = this.getService(serviceName);
+    if (!client) {
+      throw new Error(`Service ${serviceName} not found`);
+    }
+
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await client.request({
+          method,
+          url: endpoint,
+          data,
+          serviceName, // Add service name to config for logging
+        });
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        logger.warn(`[${serviceName}] Attempt ${attempt} failed:`, error.message);
+
+        if (attempt < retries) {
+          // Exponential backoff
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  async healthCheck(serviceName: string): Promise<boolean> {
+    try {
+      const client = this.getService(serviceName);
+      if (!client) return false;
+
+      const response = await client.get('/health');
+      return response.status === 200;
+    } catch (error) {
+      logger.error(`[${serviceName}] Health check failed:`, error);
+      return false;
+    }
+  }
+
+  getAllServices(): string[] {
+    return Array.from(this.services.keys());
+  }
+
+  getServiceConfig(name: string): ServiceConfig | undefined {
+    return this.services.get(name);
+  }
+}
+
+// Global service registry instance
+export const serviceRegistry = new ServiceRegistry();
+
+// Initialize default services
+export function initializeMicroservices(): void {
+  // Register example services - these should be configured via environment variables
+  const services = [
+    {
+      name: 'user-service',
+      url: process.env.USER_SERVICE_URL || 'http://localhost:3001',
+    },
+    {
+      name: 'notification-service',
+      url: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3002',
+    },
+    {
+      name: 'payment-service',
+      url: process.env.PAYMENT_SERVICE_URL || 'http://localhost:3003',
+    },
+  ];
+
+  services.forEach(service => {
+    serviceRegistry.registerService(service);
+  });
+
+  logger.info('Microservices initialized');
+}
+
+export default serviceRegistry;
+<% } %>

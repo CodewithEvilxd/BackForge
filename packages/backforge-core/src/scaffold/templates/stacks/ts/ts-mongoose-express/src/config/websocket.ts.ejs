@@ -1,0 +1,84 @@
+<% if (features.includes('websocket')) { %>
+import { Server as SocketServer } from 'socket.io';
+import { Server as HTTPServer } from 'http';
+import logger from './logger';
+
+export let io: SocketServer;
+
+export function initializeWebSocket(server: HTTPServer) {
+  io = new SocketServer(server, {
+    cors: {
+      origin: process.env.CORS_ORIGIN || '*',
+      methods: ['GET', 'POST'],
+      credentials: true
+    }
+  });
+
+  io.on('connection', (socket) => {
+    logger.info(`Socket connected: ${socket.id}`);
+
+    // Handle user joining
+    socket.on('join', (userId: string) => {
+      socket.join(`user_${userId}`);
+      logger.info(`User ${userId} joined socket room`);
+    });
+
+    // Handle room joining
+    socket.on('join-room', (roomId: string) => {
+      socket.join(roomId);
+      logger.info(`Socket ${socket.id} joined room: ${roomId}`);
+    });
+
+    // Handle leaving room
+    socket.on('leave-room', (roomId: string) => {
+      socket.leave(roomId);
+      logger.info(`Socket ${socket.id} left room: ${roomId}`);
+    });
+
+    // Handle custom events
+    socket.on('message', (data) => {
+      logger.info(`Message from ${socket.id}:`, data);
+      // Broadcast to room or specific users
+      socket.to(data.roomId).emit('message', {
+        ...data,
+        from: socket.id,
+        timestamp: new Date()
+      });
+    });
+
+    // Handle typing indicators
+    socket.on('typing', (data) => {
+      socket.to(data.roomId).emit('user-typing', {
+        userId: data.userId,
+        isTyping: data.isTyping
+      });
+    });
+
+    // Handle notifications
+    socket.on('notification', (data) => {
+      io.to(`user_${data.userId}`).emit('notification', data);
+    });
+
+    socket.on('disconnect', () => {
+      logger.info(`Socket disconnected: ${socket.id}`);
+    });
+  });
+
+  return io;
+}
+
+// Helper functions for emitting events
+export function emitToUser(userId: string, event: string, data: any) {
+  io.to(`user_${userId}`).emit(event, data);
+}
+
+export function emitToRoom(roomId: string, event: string, data: any) {
+  io.to(roomId).emit(event, data);
+}
+
+export function emitToAll(event: string, data: any) {
+  io.emit(event, data);
+}
+
+export default io;
+<% } %>

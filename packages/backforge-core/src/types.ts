@@ -82,4 +82,5 @@ export interface CLIOptions {
   path?: string;
   packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun';
   noInstall?: boolean;
+  features?: string[];
 }

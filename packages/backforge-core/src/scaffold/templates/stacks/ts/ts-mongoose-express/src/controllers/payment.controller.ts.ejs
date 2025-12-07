@@ -1,0 +1,247 @@
+<% if (features.includes('payment-stripe') || features.includes('payment-razorpay')) { %>
+import { Request, Response } from 'express';
+import paymentService from '../services/payment.service';
+import razorpayService from '../services/razorpay.service';
+import logger from '../config/logger';
+
+class PaymentController {
+  // Stripe Payment Methods
+  <% if (features.includes('payment-stripe')) { %>
+  async createStripePaymentIntent(req: Request, res: Response) {
+    try {
+      const { amount, currency, metadata } = req.body;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid amount is required',
+        });
+      }
+
+      const paymentIntent = await paymentService.createPaymentIntent(amount, currency, metadata);
+
+      res.json({
+        success: true,
+        data: {
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Create payment intent error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Payment intent creation failed',
+      });
+    }
+  }
+
+  async confirmStripePayment(req: Request, res: Response) {
+    try {
+      const { paymentIntentId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment intent ID is required',
+        });
+      }
+
+      const paymentIntent = await paymentService.confirmPaymentIntent(paymentIntentId);
+
+      res.json({
+        success: true,
+        data: paymentIntent,
+      });
+    } catch (error: any) {
+      logger.error('Confirm payment error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Payment confirmation failed',
+      });
+    }
+  }
+
+  async createStripeCustomer(req: Request, res: Response) {
+    try {
+      const { email, name, metadata } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is required',
+        });
+      }
+
+      const customer = await paymentService.createCustomer(email, name, metadata);
+
+      res.json({
+        success: true,
+        data: customer,
+      });
+    } catch (error: any) {
+      logger.error('Create customer error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Customer creation failed',
+      });
+    }
+  }
+
+  async stripeWebhook(req: Request, res: Response) {
+    try {
+      const sig = req.headers['stripe-signature'] as string;
+      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      if (!endpointSecret) {
+        return res.status(500).json({ error: 'Webhook secret not configured' });
+      }
+
+      const event = paymentService.constructEvent(req.body, sig, endpointSecret);
+
+      // Handle the event
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          logger.info(`PaymentIntent was successful: ${paymentIntent.id}`);
+          // Handle successful payment
+          break;
+        case 'payment_method.attached':
+          const paymentMethod = event.data.object;
+          logger.info(`PaymentMethod was attached: ${paymentMethod.id}`);
+          // Handle payment method attachment
+          break;
+        default:
+          logger.warn(`Unhandled event type: ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      logger.error('Webhook error:', error);
+      res.status(400).json({ error: `Webhook Error: ${error.message}` });
+    }
+  }
+  <% } %>
+
+  // Razorpay Payment Methods
+  <% if (features.includes('payment-razorpay')) { %>
+  async createRazorpayOrder(req: Request, res: Response) {
+    try {
+      const { amount, currency, receipt, notes } = req.body;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid amount is required',
+        });
+      }
+
+      const order = await razorpayService.createOrder(amount, currency, receipt, notes);
+
+      res.json({
+        success: true,
+        data: order,
+      });
+    } catch (error: any) {
+      logger.error('Create Razorpay order error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Order creation failed',
+      });
+    }
+  }
+
+  async verifyRazorpayPayment(req: Request, res: Response) {
+    try {
+      const { orderId, paymentId, signature } = req.body;
+
+      if (!orderId || !paymentId || !signature) {
+        return res.status(400).json({
+          success: false,
+          message: 'Order ID, Payment ID, and signature are required',
+        });
+      }
+
+      const isVerified = await razorpayService.verifyPayment(orderId, paymentId, signature);
+
+      res.json({
+        success: true,
+        verified: isVerified,
+      });
+    } catch (error: any) {
+      logger.error('Verify Razorpay payment error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Payment verification failed',
+      });
+    }
+  }
+
+  async createRazorpayCustomer(req: Request, res: Response) {
+    try {
+      const { name, email, contact, notes } = req.body;
+
+      if (!name || !email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Name and email are required',
+        });
+      }
+
+      const customer = await razorpayService.createCustomer(name, email, contact, notes);
+
+      res.json({
+        success: true,
+        data: customer,
+      });
+    } catch (error: any) {
+      logger.error('Create Razorpay customer error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Customer creation failed',
+      });
+    }
+  }
+
+  async razorpayWebhook(req: Request, res: Response) {
+    try {
+      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+      if (!secret) {
+        return res.status(500).json({ error: 'Webhook secret not configured' });
+      }
+
+      const signature = req.headers['x-razorpay-signature'] as string;
+      const isValidSignature = razorpayService.verifyWebhookSignature(JSON.stringify(req.body), signature);
+
+      if (!isValidSignature) {
+        return res.status(400).json({ error: 'Invalid signature' });
+      }
+
+      // Handle the event
+      const event = req.body.event;
+      switch (event) {
+        case 'payment.captured':
+          logger.info(`Payment captured: ${req.body.payload.payment.entity.id}`);
+          // Handle successful payment
+          break;
+        case 'order.paid':
+          logger.info(`Order paid: ${req.body.payload.order.entity.id}`);
+          // Handle order payment
+          break;
+        default:
+          logger.warn(`Unhandled event type: ${event}`);
+      }
+
+      res.json({ status: 'ok' });
+    } catch (error: any) {
+      logger.error('Razorpay webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  }
+  <% } %>
+}
+
+export const paymentController = new PaymentController();
+export default paymentController;
+<% } %>

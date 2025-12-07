@@ -1,0 +1,196 @@
+<% if (features.includes('payment-stripe') || features.includes('payment-razorpay')) { %>
+import { Router } from 'express';
+import paymentController from '../controllers/payment.controller';
+
+const router = Router();
+
+// Stripe routes
+<% if (features.includes('payment-stripe')) { %>
+/**
+ * @swagger
+ * /api/payments/stripe/create-intent:
+ *   post:
+ *     summary: Create Stripe payment intent
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 description: Amount in dollars
+ *               currency:
+ *                 type: string
+ *                 default: usd
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Payment intent created successfully
+ */
+router.post('/stripe/create-intent', paymentController.createStripePaymentIntent);
+
+/**
+ * @swagger
+ * /api/payments/stripe/confirm:
+ *   post:
+ *     summary: Confirm Stripe payment
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - paymentIntentId
+ *             properties:
+ *               paymentIntentId:
+ *                 type: string
+ */
+router.post('/stripe/confirm', paymentController.confirmStripePayment);
+
+/**
+ * @swagger
+ * /api/payments/stripe/customer:
+ *   post:
+ *     summary: Create Stripe customer
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               metadata:
+ *                 type: object
+ */
+router.post('/stripe/customer', paymentController.createStripeCustomer);
+
+/**
+ * @swagger
+ * /api/payments/stripe/webhook:
+ *   post:
+ *     summary: Stripe webhook endpoint
+ *     tags: [Payments]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ */
+router.post('/stripe/webhook', paymentController.stripeWebhook);
+<% } %>
+
+// Razorpay routes
+<% if (features.includes('payment-razorpay')) { %>
+/**
+ * @swagger
+ * /api/payments/razorpay/create-order:
+ *   post:
+ *     summary: Create Razorpay order
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 description: Amount in rupees
+ *               currency:
+ *                 type: string
+ *                 default: INR
+ *               receipt:
+ *                 type: string
+ *               notes:
+ *                 type: object
+ */
+router.post('/razorpay/create-order', paymentController.createRazorpayOrder);
+
+/**
+ * @swagger
+ * /api/payments/razorpay/verify:
+ *   post:
+ *     summary: Verify Razorpay payment
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *               - paymentId
+ *               - signature
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *               paymentId:
+ *                 type: string
+ *               signature:
+ *                 type: string
+ */
+router.post('/razorpay/verify', paymentController.verifyRazorpayPayment);
+
+/**
+ * @swagger
+ * /api/payments/razorpay/customer:
+ *   post:
+ *     summary: Create Razorpay customer
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               contact:
+ *                 type: string
+ *               notes:
+ *                 type: object
+ */
+router.post('/razorpay/customer', paymentController.createRazorpayCustomer);
+
+/**
+ * @swagger
+ * /api/payments/razorpay/webhook:
+ *   post:
+ *     summary: Razorpay webhook endpoint
+ *     tags: [Payments]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ */
+router.post('/razorpay/webhook', paymentController.razorpayWebhook);
+<% } %>
+
+export default router;
+<% } %>

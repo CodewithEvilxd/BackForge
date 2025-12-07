@@ -1,0 +1,56 @@
+<% if (features.includes('graphql')) { %>
+import { gql } from 'apollo-server-express';
+
+export const typeDefs = gql`
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    avatar: String
+    createdAt: String!
+  }
+
+  type Query {
+    users: [User!]!
+    user(id: ID!): User
+    me: User
+  }
+
+  type Mutation {
+    createUser(name: String!, email: String!): User!
+    updateUser(id: ID!, name: String, email: String): User
+    deleteUser(id: ID!): Boolean
+  }
+`;
+
+export const resolvers = {
+  Query: {
+    users: async () => {
+      // Return all users
+      return [];
+    },
+    user: async (_: any, { id }: { id: string }) => {
+      // Return user by ID
+      return null;
+    },
+    me: async (_: any, __: any, { req }: any) => {
+      // Return current user from JWT
+      return null;
+    },
+  },
+  Mutation: {
+    createUser: async (_: any, { name, email }: { name: string; email: string }) => {
+      // Create new user
+      return { id: '1', name, email, createdAt: new Date().toISOString() };
+    },
+    updateUser: async (_: any, { id, name, email }: { id: string; name?: string; email?: string }) => {
+      // Update user
+      return null;
+    },
+    deleteUser: async (_: any, { id }: { id: string }) => {
+      // Delete user
+      return true;
+    },
+  },
+};
+<% } %>

@@ -1,0 +1,46 @@
+<% if (features.includes('clerk-auth')) { %>
+import { ClerkExpressRequireAuth } from '@clerk/express';
+import { createClerkClient } from '@clerk/clerk-sdk-node';
+
+// Initialize Clerk client
+export const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
+
+// Middleware to require authentication
+export const requireAuth = ClerkExpressRequireAuth({
+  // Optional: Add custom logic for unauthorized requests
+  onError: (error) => {
+    console.error('Clerk auth error:', error);
+  },
+});
+
+// Helper function to get user from request
+export const getUserFromRequest = (req: any) => {
+  return req.auth?.userId ? req.auth : null;
+};
+
+// Helper function to get user data from Clerk
+export const getClerkUser = async (userId: string) => {
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    return user;
+  } catch (error) {
+    console.error('Error fetching user from Clerk:', error);
+    return null;
+  }
+};
+
+// Helper function to verify session token
+export const verifySession = async (sessionToken: string) => {
+  try {
+    const payload = await clerkClient.verifyToken(sessionToken);
+    return payload;
+  } catch (error) {
+    console.error('Error verifying session token:', error);
+    return null;
+  }
+};
+
+export default clerkClient;
+<% } %>

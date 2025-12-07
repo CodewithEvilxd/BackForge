@@ -60,6 +60,17 @@ const versions = {
   typescript_eslint: '^8.0.0',
   globals: '^15.14.0',
   eslint_js: '^9.0.0',
+  bcrypt: '^5.1.0',
+  jsonwebtoken: '^9.0.0',
+  swagger_jsdoc: '^6.2.0',
+  swagger_ui_express: '^5.0.0',
+  jest: '^29.0.0',
+  ts_jest: '^29.0.0',
+  mongodb_memory_server: '^10.0.0',
+  supertest: '^7.0.0',
+  types_bcrypt: '^5.0.0',
+  types_jsonwebtoken: '^9.0.0',
+  types_supertest: '^6.0.0',
 };
 
 export function resolveDeps(input: StackInput): StackDeps {
@@ -73,6 +84,10 @@ export function resolveDeps(input: StackInput): StackDeps {
   deps.uuid = versions.uuid;
   deps.winston = versions.winston;
   deps['winston-daily-rotate-file'] = versions.winston_daily_rotate_file;
+  deps.bcrypt = versions.bcrypt;
+  deps.jsonwebtoken = versions.jsonwebtoken;
+  deps['swagger-jsdoc'] = versions.swagger_jsdoc;
+  deps['swagger-ui-express'] = versions.swagger_ui_express;
 
   if (input.framework === 'express') {
     deps.express = versions.express;
@@ -138,11 +153,21 @@ export function resolveDeps(input: StackInput): StackDeps {
       dev['@types/hpp'] = '^0.2.5';
       dev['@types/compression'] = '^1.7.5';
       dev['@types/morgan'] = '^1.9.9';
+      dev.jest = versions.jest;
+      dev['ts-jest'] = versions.ts_jest;
+      dev['mongodb-memory-server'] = versions.mongodb_memory_server;
+      dev.supertest = versions.supertest;
+      dev['@types/bcrypt'] = versions.types_bcrypt;
+      dev['@types/jsonwebtoken'] = versions.types_jsonwebtoken;
+      dev['@types/supertest'] = versions.types_supertest;
     }
       
     scripts.build = 'rimraf dist && tsc';
     scripts.format = 'prettier --write "src/**/*.ts"';
     scripts.lint = 'eslint "src/**/*.ts" --fix';
+    scripts.test = 'jest';
+    scripts['test:watch'] = 'jest --watch';
+    scripts['test:coverage'] = 'jest --coverage';
     
     if (input.runtime === 'bun') {
       scripts.dev = 'bun run --watch src/server.ts';
@@ -180,6 +205,86 @@ export function resolveDeps(input: StackInput): StackDeps {
     dependencies: deps,
     devDependencies: dev,
     peerDependencies: peer,
+    scripts,
+  };
+}
+
+export function getFeatureDependencies(features: string[], _language: 'ts' | 'js') {
+  const deps: Record<string, string> = {};
+  const dev: Record<string, string> = {};
+  const scripts: Record<string, string> = {};
+
+  if (features.includes('oauth')) {
+    deps['passport'] = '^0.7.0';
+    deps['passport-google-oauth20'] = '^2.0.0';
+    deps['passport-github2'] = '^0.1.12';
+  }
+
+  if (features.includes('clerk-auth')) {
+    deps['@clerk/clerk-sdk-node'] = '^4.13.14';
+    deps['@clerk/express'] = '^0.1.7';
+  }
+
+  if (features.includes('graphql')) {
+    deps['apollo-server-express'] = '^3.13.0';
+    deps['graphql'] = '^16.8.1';
+    deps['class-validator'] = '^0.14.1';
+    deps['type-graphql'] = '^2.0.0-beta.6';
+  }
+
+  if (features.includes('microservices')) {
+    deps['kafkajs'] = '^2.2.4';
+    deps['amqplib'] = '^0.10.4';
+    deps['redis'] = '^4.6.13';
+    deps['axios'] = '^1.6.7';
+  }
+
+  if (features.includes('websocket')) {
+    deps['socket.io'] = '^4.7.5';
+    deps['socket.io-client'] = '^4.7.5';
+  }
+
+  if (features.includes('message-queue')) {
+    deps['amqplib'] = '^0.10.4';
+  }
+
+  if (features.includes('s3-upload')) {
+    deps['aws-sdk'] = '^2.1606.0';
+    deps['multer'] = '^1.4.5-lts.1';
+    deps['multer-s3'] = '^3.0.1';
+    deps['uuid'] = '^9.0.1';
+  }
+
+  if (features.includes('email')) {
+    deps['@sendgrid/mail'] = '^8.1.3';
+    deps['nodemailer'] = '^6.9.13';
+  }
+
+  if (features.includes('payment-stripe')) {
+    deps['stripe'] = '^15.7.0';
+  }
+
+  if (features.includes('payment-razorpay')) {
+    deps['razorpay'] = '^2.9.2';
+  }
+
+  if (features.includes('admin-dashboard')) {
+    deps['adminjs'] = '^7.1.0';
+    deps['@adminjs/express'] = '^6.1.0';
+    deps['@adminjs/mongoose'] = '^4.0.0';
+  }
+
+  if (features.includes('migrations-ui')) {
+    deps['migrate-mongo'] = '^11.0.0';
+  }
+
+  if (features.includes('load-testing')) {
+    dev['k6'] = '^0.52.0';
+  }
+
+  return {
+    dependencies: deps,
+    devDependencies: dev,
     scripts,
   };
 }

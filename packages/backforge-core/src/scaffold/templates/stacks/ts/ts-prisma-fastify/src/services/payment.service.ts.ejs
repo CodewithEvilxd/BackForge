@@ -1,0 +1,166 @@
+<% if (features.includes('payment')) { %>
+import Stripe from 'stripe';
+import logger from '../config/logger';
+
+class PaymentService {
+  private stripe: Stripe;
+
+  constructor() {
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+      apiVersion: '2023-10-16',
+    });
+  }
+
+  async createPaymentIntent(amount: number, currency: string = 'usd', metadata?: Record<string, string>): Promise<Stripe.PaymentIntent> {
+    try {
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency,
+        metadata,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      logger.info(`Payment intent created: ${paymentIntent.id}`);
+      return paymentIntent;
+    } catch (error) {
+      logger.error('Failed to create payment intent:', error);
+      throw new Error('Payment intent creation failed');
+    }
+  }
+
+  async confirmPaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+    try {
+      const paymentIntent = await this.stripe.paymentIntents.confirm(paymentIntentId);
+      logger.info(`Payment intent confirmed: ${paymentIntentId}`);
+      return paymentIntent;
+    } catch (error) {
+      logger.error('Failed to confirm payment intent:', error);
+      throw new Error('Payment confirmation failed');
+    }
+  }
+
+  async createCustomer(email: string, name?: string, metadata?: Record<string, string>): Promise<Stripe.Customer> {
+    try {
+      const customer = await this.stripe.customers.create({
+        email,
+        name,
+        metadata,
+      });
+
+      logger.info(`Customer created: ${customer.id}`);
+      return customer;
+    } catch (error) {
+      logger.error('Failed to create customer:', error);
+      throw new Error('Customer creation failed');
+    }
+  }
+
+  async createSubscription(customerId: string, priceId: string, metadata?: Record<string, string>): Promise<Stripe.Subscription> {
+    try {
+      const subscription = await this.stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        metadata,
+      });
+
+      logger.info(`Subscription created: ${subscription.id}`);
+      return subscription;
+    } catch (error) {
+      logger.error('Failed to create subscription:', error);
+      throw new Error('Subscription creation failed');
+    }
+  }
+
+  async cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    try {
+      const subscription = await this.stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      });
+
+      logger.info(`Subscription cancelled: ${subscriptionId}`);
+      return subscription;
+    } catch (error) {
+      logger.error('Failed to cancel subscription:', error);
+      throw new Error('Subscription cancellation failed');
+    }
+  }
+
+  async createRefund(paymentIntentId: string, amount?: number, reason?: Stripe.RefundCreateParams.Reason): Promise<Stripe.Refund> {
+    try {
+      const refund = await this.stripe.refunds.create({
+        payment_intent: paymentIntentId,
+        amount: amount ? Math.round(amount * 100) : undefined,
+        reason,
+      });
+
+      logger.info(`Refund created: ${refund.id}`);
+      return refund;
+    } catch (error) {
+      logger.error('Failed to create refund:', error);
+      throw new Error('Refund creation failed');
+    }
+  }
+
+  async getPaymentMethods(customerId: string): Promise<Stripe.ApiList<Stripe.PaymentMethod>> {
+    try {
+      const paymentMethods = await this.stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+      });
+
+      return paymentMethods;
+    } catch (error) {
+      logger.error('Failed to get payment methods:', error);
+      throw new Error('Failed to retrieve payment methods');
+    }
+  }
+
+  async attachPaymentMethod(customerId: string, paymentMethodId: string): Promise<Stripe.PaymentMethod> {
+    try {
+      const paymentMethod = await this.stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+
+      logger.info(`Payment method attached: ${paymentMethodId} to customer ${customerId}`);
+      return paymentMethod;
+    } catch (error) {
+      logger.error('Failed to attach payment method:', error);
+      throw new Error('Payment method attachment failed');
+    }
+  }
+
+  async createWebhookEndpoint(url: string, events: string[]): Promise<Stripe.WebhookEndpoint> {
+    try {
+      const webhookEndpoint = await this.stripe.webhookEndpoints.create({
+        url,
+        enabled_events: events,
+      });
+
+      logger.info(`Webhook endpoint created: ${webhookEndpoint.id}`);
+      return webhookEndpoint;
+    } catch (error) {
+      logger.error('Failed to create webhook endpoint:', error);
+      throw new Error('Webhook endpoint creation failed');
+    }
+  }
+
+  constructEvent(payload: string | Buffer, signature: string, webhookSecret: string): Stripe.Event {
+    try {
+      return this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (error) {
+      logger.error('Webhook signature verification failed:', error);
+      throw new Error('Webhook signature verification failed');
+    }
+  }
+
+  // Helper method to calculate application fee for connected accounts
+  calculateApplicationFee(amount: number, percentage: number = 0.05): number {
+    return Math.round(amount * percentage * 100) / 100;
+  }
+}
+
+export const paymentService = new PaymentService();
+export default paymentService;
+<% } %>

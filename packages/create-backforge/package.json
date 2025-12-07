@@ -1,6 +1,6 @@
 {
   "name": "create-backforge",
-  "version": "1.0.18",
+  "version": "1.7.0",
   "description": "Create production-ready backend projects with BackForge",
   "type": "module",
   "bin": {
@@ -33,6 +33,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "backforge-core": "^1.0.12"
+    "backforge-core": "^1.7.0"
   }
 }

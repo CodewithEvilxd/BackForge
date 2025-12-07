@@ -4,7 +4,7 @@ import * as p from '@clack/prompts';
 import pc from 'picocolors';
 import type { CLIOptions } from '../types';
 import { normalizeGenerateOptions } from '../scaffold/normalize';
-import { resolveDeps } from '../scaffold/deps';
+import { resolveDeps, getFeatureDependencies } from '../scaffold/deps';
 import { generateProjectFromTemplate } from '../scaffold/writer';
 import { installDependencies, detectPackageManager } from '../utils/pm';
 import { log, setSilent } from '../utils/log';
@@ -22,10 +22,21 @@ export async function createProject(
     const orm = (inOpts.orm ?? 'mongoose') as 'mongoose' | 'prisma';
     const framework = (inOpts.framework ?? 'express') as 'express' | 'fastify';
     const stackDeps = resolveDeps({ runtime, language, orm, framework });
+    const projectName = String(inOpts.projectName ?? normalized.context?.projectName ?? path.basename(String(normalized.targetRoot)));
+    const features = inOpts.features || [];
+
+    // Add feature-specific dependencies
+    const featureDeps = getFeatureDependencies(features, language);
+    const allDeps = { ...stackDeps.dependencies, ...featureDeps.dependencies };
+    const allDevDeps = { ...stackDeps.devDependencies, ...featureDeps.devDependencies };
+    const allScripts = { ...stackDeps.scripts, ...featureDeps.scripts };
+
     const ctx = Object.assign({}, normalized.context ?? {}, {
-      deps: stackDeps.dependencies,
-      devDependencies: stackDeps.devDependencies,
-      scripts: stackDeps.scripts ?? {},
+      deps: allDeps,
+      devDependencies: allDevDeps,
+      scripts: allScripts ?? {},
+      appName: projectName,
+      features,
     });
     const opts = {
       templatesRoot: String(normalized.templatesRoot),
@@ -35,8 +46,6 @@ export async function createProject(
       concurrency: normalized.concurrency,
     };
     setSilent(false);
-    
-    const projectName = String(inOpts.projectName ?? ctx.projectName ?? path.basename(opts.targetRoot));
     
     p.note(
       `Creating project ${pc.cyan(projectName)}
@@ -107,6 +116,7 @@ export async function main() {
         language: userAnswers.language,
         orm: userAnswers.orm,
         framework: userAnswers.framework,
+        features: userAnswers.features,
         ...options
       };
 

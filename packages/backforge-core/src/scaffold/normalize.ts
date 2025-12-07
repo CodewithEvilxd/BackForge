@@ -13,6 +13,7 @@ function ensureAbsolute(p: string): string {
   return path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function exists(p: string): Promise<boolean> {
   try {
     await fs.access(p);

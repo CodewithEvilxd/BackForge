@@ -7,8 +7,50 @@ import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
 import logger from './config/logger';
 
+<% if (features.includes('oauth')) { %>
+import passport from 'passport';
+import './config/oauth'; // OAuth configuration
+<% } %>
+
+<% if (features.includes('clerk-auth')) { %>
+import { requireAuth } from './config/clerk'; // Clerk authentication
+<% } %>
+
+<% if (features.includes('websocket')) { %>
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+<% } %>
+
+<% if (features.includes('graphql')) { %>
+import { ApolloServer } from 'apollo-server-express';
+import { typeDefs, resolvers } from './graphql/schema';
+<% } %>
+
+<% if (features.includes('admin-dashboard')) { %>
+import AdminJS from 'adminjs';
+import AdminJSExpress from '@adminjs/express';
+import * as AdminJSMongoose from '@adminjs/mongoose';
+import User from './models/user.model';
+<% } %>
+
+<% if (features.includes('s3-upload')) { %>
+import multer from 'multer';
+import multerS3 from 'multer-s3';
+import AWS from 'aws-sdk';
+<% } %>
+
+<% if (features.includes('microservices')) { %>
+import { initializeMicroservices } from './config/microservices';
+<% } %>
+
 // Import routes
 import healthRoutes from './routes/health.routes';
+<% if (features.includes('oauth')) { %>
+import authRoutes from './routes/auth.routes';
+<% } %>
+<% if (features.includes('payment-stripe') || features.includes('payment-razorpay')) { %>
+import paymentRoutes from './routes/payment.routes';
+<% } %>
 
 const app: Application = express();
 
@@ -46,8 +88,67 @@ if (process.env.NODE_ENV === 'development') {
   }));
 }
 
+<% if (features.includes('oauth')) { %>
+// Passport middleware
+app.use(passport.initialize());
+<% } %>
+
+<% if (features.includes('s3-upload')) { %>
+// AWS S3 configuration
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+});
+
+const upload = multer({
+  storage: multerS3({
+    s3,
+    bucket: process.env.AWS_S3_BUCKET!,
+    acl: 'public-read',
+    key: (req, file, cb) => {
+      cb(null, `uploads/${Date.now()}-${file.originalname}`);
+    },
+  }),
+});
+<% } %>
+
+<% if (features.includes('admin-dashboard')) { %>
+// AdminJS setup
+AdminJS.registerAdapter({
+  Resource: AdminJSMongoose.Resource,
+  Database: AdminJSMongoose.Database,
+});
+
+const adminJs = new AdminJS({
+  resources: [User],
+  rootPath: '/admin',
+});
+
+const adminRouter = AdminJSExpress.buildRouter(adminJs);
+app.use(adminJs.options.rootPath, adminRouter);
+<% } %>
+
+<% if (features.includes('graphql')) { %>
+// Apollo GraphQL setup
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context: ({ req }) => ({ req }),
+});
+
+await server.start();
+server.applyMiddleware({ app, path: '/graphql' });
+<% } %>
+
 // Routes
 app.use('/api/health', healthRoutes);
+<% if (features.includes('oauth')) { %>
+app.use('/api/v1/auth', authRoutes);
+<% } %>
+<% if (features.includes('payment-stripe') || features.includes('payment-razorpay')) { %>
+app.use('/api/payments', paymentRoutes);
+<% } %>
 
 // Root endpoint
 app.get('/', (_req: Request, res: Response) => {
@@ -84,5 +185,10 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });
+
+<% if (features.includes('microservices')) { %>
+// Initialize microservices
+initializeMicroservices();
+<% } %>
 
 export default app;
