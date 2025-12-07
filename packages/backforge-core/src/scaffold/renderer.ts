@@ -7,7 +7,6 @@ import type {
   Context,
   TemplateFileMeta,
   CompiledManifest,
-  RenderResult,
 } from '../types';
 
 class LRU<K, V> {
@@ -50,7 +49,6 @@ const DEFAULT_CACHE_SIZE = Math.max(
 );
 const renderCache = new LRU<string, string>(DEFAULT_CACHE_SIZE);
 const compiledTemplateCache = new Map<string, CompiledEntry>();
-let compiledManifest: CompiledManifest | null = null;
 
 async function hashContext(ctx: Context): Promise<string> {
   try {
@@ -66,7 +64,6 @@ async function loadCompiledManifest(dir: string): Promise<void> {
   if (!fsSync.existsSync(manifestPath)) return;
   const raw = await fs.readFile(manifestPath, 'utf8');
   const m = JSON.parse(raw) as CompiledManifest;
-  compiledManifest = m;
   for (const rel of Object.keys(m)) {
     const entry = m[rel];
     if (entry.compiled) {
@@ -90,7 +87,6 @@ export async function initRenderer(opts: {
   distCompiledRoot?: string;
 }): Promise<void> {
   compiledTemplateCache.clear();
-  compiledManifest = null;
   const dist =
     opts.distCompiledRoot ??
     path.join(opts.templatesRoot, '..', '..', 'dist', 'templates-compiled');
@@ -175,5 +171,4 @@ export async function loadTemplateIndex(
 export function clearRenderCache(): void {
   renderCache.clear();
   compiledTemplateCache.clear();
-  compiledManifest = null;
 }

@@ -1,4 +1,3 @@
-import path from 'path';
 import {
   initRenderer,
   render,
@@ -9,7 +8,6 @@ import { generateProjectFromTemplate, writeTree } from './writer';
 import {
   detectPackageManager,
   installDependencies,
-  runScript,
 } from '../utils/pm';
 import type { GenerateOptions, GenerateResult } from '../types';
 
@@ -25,7 +23,6 @@ export async function init(opts?: {
 }
 
 export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
-  const templatesRoot = path.resolve(opts.templatesRoot);
   const result = await generateProjectFromTemplate(opts);
   if (!result.success) return result;
   if (!opts.skipInstall) {

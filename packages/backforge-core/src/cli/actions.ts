@@ -1,4 +1,3 @@
-import path from 'path';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import { normalizeGenerateOptions } from '../scaffold/normalize';
