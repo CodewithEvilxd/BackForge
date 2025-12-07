@@ -31,8 +31,8 @@ importers:
   packages/backforge-cli:
     dependencies:
       backforge-core:
-        specifier: workspace:^1.0.12
-        version: link:../backforge-core
+        specifier: ^1.0.12
+        version: 1.0.12
 
   packages/backforge-core:
     dependencies:
@@ -65,8 +65,8 @@ importers:
   packages/create-backforge:
     dependencies:
       backforge-core:
-        specifier: workspace:^1.0.12
-        version: link:../backforge-core
+        specifier: ^1.0.12
+        version: 1.0.12
 
 packages:
 
@@ -678,6 +678,11 @@ packages:
 
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
+
+  backforge-core@1.0.12:
+    resolution: {integrity: sha512-qiwwVOXXV999fd2lvieFiGpvFtRVbfUmnANJStIknSZNVLPriqZzd7AmkGYL9SSWapvGF0fMDJ9lOpXTDo0J9g==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -1938,6 +1943,13 @@ snapshots:
   assertion-error@1.1.0: {}
 
   async@3.2.6: {}
+
+  backforge-core@1.0.12:
+    dependencies:
+      '@clack/prompts': 0.11.0
+      commander: 14.0.2
+      ejs: 3.1.10
+      picocolors: 1.1.1
 
   balanced-match@1.0.2: {}
 
