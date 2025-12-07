@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "packages/backforge-core/src/**/*.ts",
+    "packages/backforge-cli/bin/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/templates/**"
+  ]
+}

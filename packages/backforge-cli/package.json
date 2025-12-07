@@ -1,0 +1,33 @@
+{
+  "name": "backforge-cli",
+  "version": "1.0.9",
+  "description": "BackForge CLI - Production-ready backend scaffolder (Global CLI wrapper)",
+  "bin": {
+    "backforge": "bin/backforge.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "keywords": [
+    "backend",
+    "scaffolder",
+    "generator",
+    "cli"
+  ],
+  "author": "Raj",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Codewithevilxd/backforge.git",
+    "directory": "packages/backforge-cli"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "backforge-core": "^1.0.12"
+  },
+  "scripts": {
+    "build": "echo skip"
+  }
+}
